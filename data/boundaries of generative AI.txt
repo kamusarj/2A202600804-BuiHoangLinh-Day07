@@ -1,0 +1,70 @@
+In the following, we discuss four salient boundaries of generative AI that, we argue, are important limi-
+tations in real-world applications. The following limitations are of technical nature in that they refer to
+how current generative AI models make inferences, and, hence, the limitations arise at the model level.
+Because of this, it is likely that limitations will persist in the long run, with system- and application-level
+implications.
+Incorrect outputs. Generative AI models may produce output with errors. This is owed to the
+underlying nature of machine learning models relying on probabilistic algorithms for making inferences.
+For example, generative AI models generate the most probable response to a prompt, not necessarily
+the correct response. As such, challenges arise as, by now, outputs are indistinguishable from authentic
+content and may present misinformation or deceive users (Spitale et al., 2023). In LLMs, this problem in
+emergent behavior is called hallucination (Ji et al., 2023), which refers to mistakes in the generated text
+that are semantically or syntactically plausible but are actually nonsensical or incorrect. In other words,
+the generative AI model produces content that is not based on any facts or evidence, but rather on its own
+assumptions or biases. Moreover, the output of generative AI, especially that of LLMs, is typically not
+easily verifiable.
+The correctness of generative AI models is highly dependent on the quality of training data and the
+according learning process. Generative AI systems and applications can implement correctness checks
+to inhibit certain outputs. Yet, due to the black-box nature of state-of-the-art AI models (Rai, 2020),
+the usage of such systems critically hinges on users’ trust in reliable outputs. The closed source of
+commercial off-the-shelf generative AI systems aggravates this fact and prohibits further tuning and re-
+training of the models. One solution for addressing the downstream implications of incorrect outputs is
+to use generative AI to produce explanations or references, which can then be verified by users. However,
+such explanations are again probabilistic and thus subject to errors; nevertheless, they may help users in
+their judgment and decision-making when to accept outputs of generative AI and when not.
+Bias and fairness. Societal biases permeate everyday human-generated content (Eskreis-Winkler
+and Fishbach, 2022). The unbiasedness of vanilla generative AI is very much dependent on the quality
+of training data and the alignment process. Training deep learning models on biased data can amplify
+human biases, replicate toxic language, or perpetuate stereotypes of gender, sexual orientation, political
+11
+leaning, or religion (e.g., Caliskan et al., 2017; Hartmann et al., 2023b). Recent studies expose the
+harmful biases embedded in multimodal generative AI models such as CLIP (contrastive language-image
+pre-training; Wolfe et al. (2022)) and the CLIP-filtered LAION dataset (Birhane et al., 2021), which are
+core components of generative AI models (e.g., Dall-E 2 or Stable Diffusion). Human biases can also
+creep into the models in other stages of the model engineering process. For instruction-based language
+models, the RLHF process is an additional source of bias (OpenAI, 2023b). Careful coding guidelines
+and quality checks can help address these risks.
+Addressing bias and thus fairness in AI receives increasing attention in the academic literature (De-
+Arteaga et al., 2022; Dolata et al., 2022; Ferrara, 2023; Feuerriegel et al., 2020; Schramowski et al., 2022;
+von Zahn et al., 2022), but remains an open and ongoing research question. For example, the developers
+of Stable Diffusion flag “probing and understanding the limitations and biases of generative models” as
+an important research area (Rombach et al., 2022). Some scholars even attest to models certain moral
+self-correcting capabilities (Ganguli et al., 2023), which may attenuate concerns of embedded biases and
+result in more fairness. In addition, on the system and application level, mitigation mechanisms can be
+implemented to address biases embedded in the deep learning models and create more diverse outputs
+(e.g., updating the prompts “under the hood” as done by Dall-E 2 to increase the demographic diversity
+of the outputs). Yet, more research is needed to get closer to the notion of fair AI.
+Copyright violation. Generative AI models, systems, and applications may cause a violation of
+copyright laws because they can produce outputs that resemble or even copy existing works without
+permission or compensation to the original creators (Smits and Borghuis, 2022). Here, two potential
+infringement risks are common. On the one hand, generative AI may make illegal copies of a work, thus
+violating the reproduction right of creators. Among others, this may happen when a generative AI was
+trained on original content that is protected by copyright but where the generative AI produces copies.
+Hence, a typical implication is that the training data for building generative AI systems must be free of
+copyrights. Crucially, copyright violation may nevertheless still happen even when the generative AI has
+never seen a copyrighted work before, such as, for example, when it simply produces a trademarked logo
+similar to that of Adidas but without having never seen that logo before. On the other hand, generative
+AI may prepare derivative works, thus violating the transformation right of creators. To this end, legal
+questions arise around the balance of originality and creativity in generative AI systems. Along these
+lines, legal questions also arise around who holds the intellectual property for works (including patents)
+12
+produced by a generative AI.
+Environmental concerns. Lastly, there are substantial environmental concerns from developing
+and using generative AI systems due to the fact that such systems are typically built around large-scale
+neural networks, and, therefore, their development and operation consume large amounts of electricity
+with immense negative carbon footprint (Schwartz et al., 2020). For example, the carbon emission for
+training a generative AI model such as GPT-3 was estimated to have produced the equivalent of 552 t CO2
+and thus amounts to the annual CO2 emissions of several dozens of households (Khan, 2021). Owing to
+this, there are ongoing efforts in AI research to make the development and deployment of AI algorithms
+more carbon-friendly, through more efficient training algorithms, through compressing the size of neural
+network architectures, and through optimized hardware (Schwartz et al., 2020).
