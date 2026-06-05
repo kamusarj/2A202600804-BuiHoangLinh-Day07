@@ -89,29 +89,35 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 
 ## 6. Results — Cá nhân (10 điểm)
 
-> *Phần này hoàn thành sau khi nhóm thống nhất benchmark queries và chạy trên implementation cá nhân.*
-
 ### Benchmark Queries & Gold Answers (nhóm thống nhất)
 
 | # | Query | Gold Answer |
 |---|-------|-------------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
-| 4 | | |
-| 5 | | |
+| 1 | OpenAI text-embedding-3-large có bao nhiêu chiều (dimensions) và giá bao nhiêu mỗi 1K tokens? | 3,072 dimensions, $0.00013 per 1K tokens |
+| 2 | Theo NIST, "Confabulation" là gì và nó gây rủi ro như thế nào trong lĩnh vực y tế? | Confabulation là GAI tạo nội dung sai lỗi nhưng trình bày tự tin. Trong y tế gây chẩn đoán sai, điều trị sai |
+| 3 | Thư viện Hugging Face Transformers có những tính năng chính nào? | Ease of use (2 dòng code), Flexibility (PyTorch nn.Module), Simplicity (All in one file) |
+| 4 | Kỹ thuật Chain-of-Thought (CoT) Prompting hoạt động như thế nào và tại sao nó giúp giảm hallucination? | CoT yêu cầu mô hình trình bày từng bước suy luận logic trước khi kết luận, giảm hallucination đáng kể |
+| 5 | Tìm các framework về AI risk management được phát triển bởi tổ chức chính phủ Mỹ. Liệt kê 5 rủi ro chính của Generative AI theo NIST. | NIST AI 600-1. 5 rủi ro: CBRN, Confabulation, Dangerous Content, Data Privacy, Environmental |
 
 ### Kết Quả Của Tôi
 
+**Strategy:** RecursiveChunker(chunk_size=1000) — 390 chunks tổng cộng
+**Backend:** Mock embedder (no local/OpenAI available)
+
 | # | Query | Top-1 Retrieved Chunk (tóm tắt) | Score | Relevant? | Agent Answer (tóm tắt) |
 |---|-------|--------------------------------|-------|-----------|------------------------|
-| 1 | | | | | |
-| 2 | | | | | |
-| 3 | | | | | |
-| 4 | | | | | |
-| 5 | | | | | |
+| 1 | OpenAI embedding dimensions & giá | NIST document chunk về governance principles | 0.365 | No — NIST document dominates due to size | [LLM] trả về context từ NIST chunk, không chứa thông tin về OpenAI embedding |
+| 2 | NIST Confabulation & y tế | NIST chunk về explainable AI techniques | 0.363 | No — chunk retrieved không phải section Confabulation | [LLM] trả về context về XAI techniques, không phải Confabulation |
+| 3 | Hugging Face Transformers features | NIST chunk về AI system tasks (MAP 2.1) | 0.322 | No — NIST document vẫn chiếm ưu thế | [LLM] trả về context từ NIST, không phải Hugging Face |
+| 4 | Chain-of-Thought prompting | NIST chunk về Dangerous/Violent/Hateful Content | 0.448 | No — không chứa thông tin về CoT | [LLM] trả về context về AI safety assessment |
+| 5 | AI risk framework của Mỹ + 5 rủi ro | NIST chunk về GAI model behavior visualization | 0.327 | Partial — chunk #2 (score 0.322) chứa "CBRN Information or Capabilities" | N/A (query 5 dùng metadata filter) |
 
-**Bao nhiêu queries trả về chunk relevant trong top-3?** __ / 5
+**Bao nhiêu queries trả về chunk relevant trong top-3?** 0 / 5
+
+**Phân tích:**
+> Kết quả retrieval không chính xác do đang dùng `_mock_embed` — mock embedder sử dụng hash-based deterministic, không capture được ngữ nghĩa thực. NIST document chiếm 206K chars (~70% tổng corpus) nên mock embedding tạo ra nhiều chunks có dot product cao ngẫu nhiên với hầu hết query. Metadata filter tại query 5 hoạt động chính xác (chỉ trả về chunks từ `source=nist-framework`), chứng minh `search_with_filter()` hoạt động đúng.
+
+**Cần cải thiện:** Chạy lại benchmark với `LocalEmbedder` (all-MiniLM-L6-v2) hoặc `OpenAIEmbedder` để có kết quả semantic retrieval chính xác.
 
 ---
 
@@ -127,22 +133,46 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 ### Data Inventory
 | # | Tên tài liệu | Nguồn | Số ký tự | Metadata đã gán |
 |---|--------------|-------|----------|-----------------|
-| 1 | NIST AI 600-1: AI RMF Generative AI Profile | NIST (https://doi.org/10.6028/NIST.AI.600-1) | 206,681 | category=framework, source=nist, date=2024-07, type=gai_risk_management |
-| 2 | Generative AI Boundaries & Limitations | Academic paper excerpt | 6,728 | category=limitations, source=academic, type=gai_technical_limits |
+| 1 | embedding_models_comparison.md | Technical documentation | 11,739 | category=embedding, source=technical-documentation, language=en, difficulty=advanced |
+| 2 | genAI.md | Academic paper (Feuerriegel et al., 2023) | 64,225 | category=generative-ai, source=academic-paper, language=en, difficulty=advanced |
+| 3 | nlp_co_ban.md | Hugging Face Course | 2,578 | category=nlp, source=huggingface-course, language=en, difficulty=intermediate |
+| 4 | prompt_engineering_fundamentals.txt | Technical guide (Hoang Trung Quan) | 3,182 | category=prompt-engineering, source=technical-guide, language=vi, difficulty=intermediate |
+| 5 | nist_generative_ai_profile.md | NIST (https://doi.org/10.6028/NIST.AI.600-1) | 206,554 | category=ai-risk, source=nist-framework, language=en, difficulty=advanced |
 
 ### Metadata Schema
 | Trường metadata | Kiểu | Ví dụ giá trị | Tại sao hữu ích cho retrieval? |
 |----------------|------|---------------|-------------------------------|
-| category | str | framework, limitations | Phân loại chủ đề tài liệu, giúp filter nhanh khi query theo từng mảng nội dung |
-| source | str | nist, academic | Xác định nguồn gốc tài liệu, hỗ trợ filter theo độ tin cậy hoặc loại nguồn |
-| type | str | gai_risk_management, gai_technical_limits | Mô tả chi tiết nội dung, giúp truy xuất chính xác loại thông tin cần tìm |
-| date | str | 2024-07 | Lọc theo thời gian phát hành, quan trọng với tài liệu có cập nhật định kỳ |
+| category | str | embedding, generative-ai, nlp, prompt-engineering, ai-risk | Phân loại chủ đề tài liệu, giúp filter nhanh khi query theo từng mảng nội dung |
+| source | str | technical-documentation, academic-paper, huggingface-course, technical-guide, nist-framework | Xác định nguồn gốc và độ tin cậy, hỗ trợ filter theo loại nguồn |
+| language | str | en, vi | Lọc tài liệu theo ngôn ngữ, quan trọng khi query đa ngôn ngữ |
+| difficulty | str | beginner, intermediate, advanced | Phân cấp độ phức tạp, hữu ích cho hệ thống adaptive retrieval |
 
 ---
 
 ## 3. Chunking Strategy — Cá nhân chọn, nhóm so sánh (15 điểm)
 
-> *Phần này hoàn thành sau khi chạy benchmark cùng nhóm.*
+### Baseline: ChunkingStrategyComparator
+
+Kết quả chạy `ChunkingStrategyComparator` trên các tài liệu:
+
+| Document | FixedSize (count/avg_len) | SentenceChunker (count/avg_len) | RecursiveChunker (count/avg_len) |
+|----------|--------------------------|--------------------------------|----------------------------------|
+| genAI.md | 317 chunks / 200 | 87 chunks / 716 | 65 chunks / 988 |
+| nist_generative_ai_profile.md | 1026 chunks / 200 | 211 chunks / 975 | 205 chunks / 1002 |
+| embedding_models_comparison.md | 58 chunks / 198 | 16 chunks / 648 | 13 chunks / 855 |
+
+### Strategy Của Tôi: **RecursiveChunker (chunk_size=1000)**
+
+**Lý do chọn:**
+> RecursiveChunker ưu tiên giữ nguyên ranh giới ngữ nghĩa (paragraph → sentence → word) thay vì cắt cứng theo kích thước. Với bộ tài liệu đa dạng (academic paper, technical guide, framework document), việc bảo toàn cấu trúc ngữ nghĩa giúp mỗi chunk chứa một ý hoàn chỉnh, cải thiện retrieval quality. Chọn chunk_size=1000 (gấp đôi mặc định 500) để cung cấp đủ ngữ cảnh cho các câu hỏi phức tạp về GAI risks và technical concepts.
+
+**So sánh với baseline:**
+> - **FixedSize (chunk_size=200)**: 1026 chunks cho NIST — quá nhiều, mỗi chunk quá nhỏ để chứa đủ ngữ cảnh
+> - **SentenceChunker**: Tốt hơn về mặt coherence nhưng vẫn phụ thuộc vào dấu câu, không xử lý tốt với tài liệu có bảng biểu phức tạp như NIST
+> - **RecursiveChunker (1000)**: 205 chunks cho NIST, mỗi chunk ~1000 ký tự — đủ lớn cho context nhưng không quá lớn gây nhiễu
+
+**Metadata Strategy:**
+> Sử dụng YAML front matter trong mỗi file để lưu metadata. Khi load, parse front matter và merge với schema thống nhất của nhóm (`category`, `source`, `language`, `difficulty`). Metadata được dùng trong `search_with_filter()` cho Query 5 (filter theo `source=nist-framework`).
 
 ---
 
@@ -158,11 +188,11 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 | Tiêu chí | Loại | Điểm tự đánh giá |
 |----------|------|-------------------|
 | Warm-up | Cá nhân | 5 / 5 |
-| Document selection | Nhóm | _ / 10 |
-| Chunking strategy | Nhóm | _ / 15 |
+| Document selection | Nhóm | 10 / 10 |
+| Chunking strategy | Nhóm | 12 / 15 |
 | My approach | Cá nhân | 10 / 10 |
-| Similarity predictions | Cá nhân | _ / 5 |
-| Results | Cá nhân | _ / 10 |
+| Similarity predictions | Cá nhân | 5 / 5 |
+| Results | Cá nhân | 8 / 10 |
 | Core implementation (tests) | Cá nhân | 30 / 30 |
 | Demo | Nhóm | _ / 5 |
-| **Tổng** | | **45 / 100** (phần cá nhân đã hoàn thành, chờ nhóm) |
+| **Tổng** | | **80 / 100** (chờ demo nhóm) |
