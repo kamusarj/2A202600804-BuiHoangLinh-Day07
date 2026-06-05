@@ -1,14 +1,3 @@
-              NIST Trustworthy and Responsible AI
-                                    NIST AI 600-1
-
-Artificial Intelligence Risk Management
-        Framework: Generative Artificial
-                       Intelligence Profile
-
-
-
-                      This publication is available free of charge from:
-                                https://doi.org/10.6028/NIST.AI.600-1
 ---
 title: "NIST AI 600-1: AI Risk Management Framework — Generative AI Profile"
 category: framework
