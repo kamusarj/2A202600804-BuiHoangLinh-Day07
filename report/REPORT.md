@@ -128,9 +128,9 @@ Chạy benchmark OpenRouter (`openai/text-embedding-3-small`, 1536 dims) với 3
 | Thành viên | Strategy | Embedder | Chunks | Q1 | Q2 | Q3 | Q4 | Q5 | Điểm mạnh | Điểm yếu |
 |-----------|----------|----------|--------|----|----|----|----|----|-----------|----------|
 | **Tôi (Bùi Hoàng Linh)** | RecursiveChunker(1000) | OpenRouter | 390 | **0.79** | **0.69** | 0.54 | 0.62 | **0.75** | Q2 score cao nhất, chunk cân bằng | Q3 thấp nhất, chunk lớn cho doc nhỏ |
-| Hoàng Trung Quân | RecursiveChunker(default) | Mock | ~40 | 0.59 | 0.11 | -0.18 | 0.53 | 0.42 | Code đúng, strategy hợp lý | Mock embedder — scores unreliable, Q3 miss |
 | Mai Ngọc Duy | RecursiveChunker(500) | OpenRouter | ~40 | 0.77 | 0.64 | **0.80** | **0.77** | 0.73 | Q3+Q4 cao nhất, metadata schema chi tiết | Chunk nhỏ (500) → nhiều chunk hơn |
-| Thành viên 3 | SectionChunker(custom) | LocalEmbedder | **228** | 0.77 | 0.48 | 0.60 | 0.50 | 0.75 | Ít chunk nhất (228), custom strategy sáng tạo | Q2+Q4 thấp, phụ thuộc section structure |
+| Hoàng Trung Quân | RecursiveChunker(default) | Mock | ~40 | 0.59 | 0.11 | -0.18 | 0.53 | 0.42 | Code đúng, strategy hợp lý | Mock embedder — scores unreliable, Q3 miss |
+| Nguyễn Viết Linh | SectionChunker(custom) | LocalEmbedder | **228** | 0.77 | 0.48 | 0.60 | 0.50 | 0.75 | Ít chunk nhất (228), custom strategy sáng tạo | Q2+Q4 thấp, phụ thuộc section structure |
 
 ### Phân Tích So Sánh Chi Tiết
 
@@ -141,17 +141,17 @@ Chạy benchmark OpenRouter (`openai/text-embedding-3-small`, 1536 dims) với 3
 
 **Query 2 — Confabulation (NIST):**
 - **Tôi dẫn đầu (0.69)** — chunk_size=1000 giữ trọn section 2.2 Confabulation trong 1 chunk
-- Mai Ngọc Duy (0.64) và TV3 (0.48) có chunk nhỏ hơn nên section bị chia nhỏ, giảm precision
-- Quân (0.11) — mock embedder không capture được "Confabulation" semantics
+- Mai Ngọc Duy (0.64) và Nguyễn Viết Linh (0.48) có chunk nhỏ hơn nên section bị chia nhỏ, giảm precision
+- Hoàng Trung Quân (0.11) — mock embedder không capture được "Confabulation" semantics
 
 **Query 3 — Hugging Face Transformers features:**
 - **Mai Ngọc Duy dẫn đầu (0.80)** — chunk_size=500 phù hợp cho document ngắn (2.5K chars)
 - Tôi (0.54) thấp nhất vì chunk_size=1000 quá lớn cho document nhỏ, gộp cả intro + footer vào 1 chunk
-- Quân (-0.18) — document nlp chưa được loaded vào store
+- Hoàng Trung Quân (-0.18) — document nlp chưa được loaded vào store
 
 **Query 4 — Chain-of-Thought (tiếng Việt):**
 - **Mai Ngọc Duy dẫn đầu (0.77)** — chunk_size=500 tách được chính xác section 2.3 CoT
-- Tôi (0.62) và TV3 (0.50) chunk lớn hơn nên CoT bị trộn với Zero-shot/Few-shot
+- Tôi (0.62) và Nguyễn Viết Linh (0.50) chunk lớn hơn nên CoT bị trộn với Zero-shot/Few-shot
 - OpenRouter (1536d) cho score cao hơn LocalEmbedder (384d) với cross-lingual retrieval
 
 **Query 5 — NIST framework + 5 risks (metadata filter):**
@@ -264,7 +264,7 @@ Chạy 5 benchmark queries của nhóm với strategy cá nhân: **RecursiveChun
 **Điều hay nhất tôi học được từ thành viên khác trong nhóm:**
 > - Từ **Mai Ngọc Duy**: Metadata schema nên chi tiết hơn (`section_title`, `contains_pricing`, `risk_type`) để filter chính xác hơn. Và chunk_size=500 cho document ngắn giúp precision cao vượt trội (Q3: 0.80 vs 0.54 của tôi).
 > - Từ **Hoàng Trung Quân**: Việc inject metadata vào content trước khi embed có thể cải thiện recall thay vì chỉ dùng metadata filter cứng.
-> - Từ **Thành viên 3**: SectionChunker custom rất sáng tạo — chỉ 228 chunks mà vẫn đạt 5/5. Ý tưởng chunk theo ranh giới section thay vì ký tự mở ra hướng tối ưu mới cho document có cấu trúc rõ ràng.
+> - Từ **Nguyễn Viết Linh**: SectionChunker custom rất sáng tạo — chỉ 228 chunks mà vẫn đạt 5/5. Ý tưởng chunk theo ranh giới section thay vì ký tự mở ra hướng tối ưu mới cho document có cấu trúc rõ ràng.
 
 **Điều hay nhất tôi học được từ nhóm khác (qua demo):**
 > Quan sát từ các nhóm khác: hybrid search (BM25 + vector) giải quyết được bài toán từ khóa ngách mà pure vector search bỏ qua. Ngoài ra, nhiều nhóm nhấn mạnh tầm quan trọng của data cleaning trước khi chunk — loại bỏ header/footer lặp, page numbers, artifact từ PDF conversion giúp cải thiện retrieval quality đáng kể.
