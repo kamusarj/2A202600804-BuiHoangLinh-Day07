@@ -76,14 +76,14 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 
 | Pair | Sentence A | Sentence B | Dự đoán | Actual Score | Đúng? |
 |------|-----------|-----------|---------|--------------|-------|
-| 1 | "Python là ngôn ngữ lập trình" | "Python is a programming language" | high | | |
-| 2 | "Chó là động vật trung thành" | "Mèo thích bắt chuột" | low | | |
-| 3 | "AI đang thay đổi thế giới" | "Trí tuệ nhân tạo biến đổi ngành công nghiệp" | high | | |
-| 4 | "Hôm nay trời đẹp" | "Cấu trúc dữ liệu và giải thuật" | low | | |
-| 5 | "Vector database lưu embeddings" | "Embedding store dùng cho similarity search" | high | | |
+| 1 | "Python là ngôn ngữ lập trình" | "Python is a programming language" | high | -0.1162 | Không |
+| 2 | "Chó là động vật trung thành" | "Mèo thích bắt chuột" | low | 0.0123 | Có |
+| 3 | "AI đang thay đổi thế giới" | "Trí tuệ nhân tạo biến đổi ngành công nghiệp" | high | 0.1024 | Không |
+| 4 | "Hôm nay trời đẹp" | "Cấu trúc dữ liệu và giải thuật" | low | -0.0223 | Có |
+| 5 | "Vector database lưu embeddings" | "Embedding store dùng cho similarity search" | high | -0.0844 | Không |
 
 **Kết quả nào bất ngờ nhất? Điều này nói gì về cách embeddings biểu diễn nghĩa?**
-> *Sẽ điền sau khi chạy thực tế với compute_similarity(). Dự đoán cặp 3 (AI ↔ Trí tuệ nhân tạo) sẽ gây bất ngờ vì mock embedder dùng hash-based deterministic, không thực sự hiểu ngữ nghĩa, nên similarity có thể thấp hơn mong đợi. Điều này cho thấy embedding quality phụ thuộc hoàn toàn vào backend — mock chỉ để test code, cần embedder thật (local/openai) để đánh giá ngữ nghĩa chính xác.*
+> Bất ngờ nhất: Cả 3 cặp dự đoán HIGH similarity (1, 3, 5) đều cho kết quả gần 0 hoặc âm. Cặp 1 ("Python" trong 2 ngôn ngữ) và cặp 3 ("AI" ↔ "Trí tuệ nhân tạo") lẽ ra phải có similarity cao vì cùng nghĩa, nhưng mock embedder dùng hash-based deterministic, mỗi ký tự khác nhau tạo ra vector hoàn toàn khác nhau. Điểm similarity chỉ dao động từ -0.12 đến +0.10 — gần như ngẫu nhiên. **Kết luận:** Mock embedder KHÔNG capture được ngữ nghĩa. Cần LocalEmbedder (all-MiniLM-L6-v2) hoặc OpenAIEmbedder để có similarity có ý nghĩa. Điều này minh họa rằng: embedding quality quyết định toàn bộ chất lượng retrieval — code đúng nhưng embedder sai thì kết quả vẫn vô nghĩa.
 
 ---
 
@@ -126,9 +126,9 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 > *Phần này hoàn thành cùng nhóm.*
 
 ### Domain & Lý Do Chọn
-**Domain:** Generative AI Risk Management & Governance (Quản trị rủi ro AI sinh tạo)
+**Domain:** Generative AI & Natural Language Processing (GAI + NLP)
 **Tại sao nhóm chọn domain này?**
-> Generative AI đang phát triển nhanh chóng kéo theo các vấn đề về rủi ro, đạo đức và quản trị. Tài liệu NIST AI 600-1 là khung quản trị rủi ro AI chính thức từ chính phủ Mỹ, bao gồm các mapping cho GAI risks. Đây là domain giàu nội dung ngữ nghĩa, có cấu trúc rõ ràng, phù hợp để kiểm tra các chiến lược chunking và RAG.
+> Nhóm chọn đa domain (GAI risks + NLP fundamentals + Prompt Engineering) để kiểm tra khả năng retrieval cross-domain. Bộ tài liệu cover từ technical guide (embedding models comparison, prompt engineering), academic paper (genAI conceptualization), đến government framework (NIST AI 600-1). Điều này giúp benchmark đánh giá được: (1) retrieval precision khi câu trả lời nằm trong đúng document, (2) khả năng metadata filtering để tách domain, (3) chunking strategy nào xử lý tốt tài liệu đa dạng.
 
 ### Data Inventory
 | # | Tên tài liệu | Nguồn | Số ký tự | Metadata đã gán |
@@ -153,23 +153,36 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 
 ### Baseline: ChunkingStrategyComparator
 
-Kết quả chạy `ChunkingStrategyComparator` trên các tài liệu:
+Chạy `ChunkingStrategyComparator(chunk_size=200)` trên 3 tài liệu chính:
 
-| Document | FixedSize (count/avg_len) | SentenceChunker (count/avg_len) | RecursiveChunker (count/avg_len) |
-|----------|--------------------------|--------------------------------|----------------------------------|
-| genAI.md | 317 chunks / 200 | 87 chunks / 716 | 65 chunks / 988 |
-| nist_generative_ai_profile.md | 1026 chunks / 200 | 211 chunks / 975 | 205 chunks / 1002 |
-| embedding_models_comparison.md | 58 chunks / 198 | 16 chunks / 648 | 13 chunks / 855 |
+| Document | FixedSize(200) | SentenceChunker(3) | RecursiveChunker(200) |
+|----------|---------------|-------------------|----------------------|
+| genAI.md (63K chars) | 317 chunks / avg 200 | 108 chunks / avg 585 | 478 chunks / avg 131 |
+| embedding_models_comparison.md (11K) | 58 chunks / avg 198 | 30 chunks / avg 381 | 101 chunks / avg 112 |
+| nist_generative_ai_profile.md (205K) | 1026 chunks / avg 200 | 343 chunks / avg 571 | 1562 chunks / avg 130 |
+
+**Nhận xét baseline:**
+- FixedSize tạo ra nhiều chunk nhỏ (200 chars), dễ làm mất ngữ cảnh
+- RecursiveChunker(200) tạo ra quá nhiều chunk nhỏ (130 avg) vì separator `" "` cắt quá sớm
+- SentenceChunker giữ coherence tốt nhất (avg 381-585 chars), phù hợp với tài liệu có câu văn hoàn chỉnh
 
 ### Strategy Của Tôi: **RecursiveChunker (chunk_size=1000)**
 
 **Lý do chọn:**
-> RecursiveChunker ưu tiên giữ nguyên ranh giới ngữ nghĩa (paragraph → sentence → word) thay vì cắt cứng theo kích thước. Với bộ tài liệu đa dạng (academic paper, technical guide, framework document), việc bảo toàn cấu trúc ngữ nghĩa giúp mỗi chunk chứa một ý hoàn chỉnh, cải thiện retrieval quality. Chọn chunk_size=1000 (gấp đôi mặc định 500) để cung cấp đủ ngữ cảnh cho các câu hỏi phức tạp về GAI risks và technical concepts.
+> RecursiveChunker ưu tiên giữ nguyên ranh giới ngữ nghĩa (paragraph → sentence → space) thay vì cắt cứng theo kích thước. Với bộ tài liệu đa dạng (academic paper, technical guide, framework document), việc bảo toàn cấu trúc giúp mỗi chunk chứa một ý hoàn chỉnh. Chọn chunk_size=1000 để cung cấp đủ ngữ cảnh cho các câu hỏi phức tạp về GAI risks và technical concepts, đồng thời không quá lớn để gây nhiễu.
 
-**So sánh với baseline:**
-> - **FixedSize (chunk_size=200)**: 1026 chunks cho NIST — quá nhiều, mỗi chunk quá nhỏ để chứa đủ ngữ cảnh
-> - **SentenceChunker**: Tốt hơn về mặt coherence nhưng vẫn phụ thuộc vào dấu câu, không xử lý tốt với tài liệu có bảng biểu phức tạp như NIST
-> - **RecursiveChunker (1000)**: 205 chunks cho NIST, mỗi chunk ~1000 ký tự — đủ lớn cho context nhưng không quá lớn gây nhiễu
+### So Sánh Strategy Của Tôi vs Baseline
+
+| Document | FixedSize(200) | Sentence(3) | Recursive(200) | **Recursive(1000) — My** |
+|----------|---------------|-------------|----------------|--------------------------|
+| genAI.md | 317 | 108 | 478 | **94** |
+| nist_generative_ai_profile.md | 1026 | 343 | 1562 | **275** |
+| embedding_models_comparison.md | 58 | 30 | 101 | **14** |
+| nlp_co_ban.md | 13 | 6 | 19 | **4** |
+| prompt_engineering_fundamentals.txt | 11 | 5 | 19 | **3** |
+| **Tổng** | 1425 | 492 | 2179 | **390** |
+
+**Kết luận:** RecursiveChunker(1000) giảm ~73% số chunk so với FixedSize(200) nhưng mỗi chunk chứa đủ ngữ cảnh (avg ~700 chars). Ít chunk hơn = ít nhiễu hơn, mỗi chunk có ý trọn vẹn hơn.
 
 **Metadata Strategy:**
 > Sử dụng YAML front matter trong mỗi file để lưu metadata. Khi load, parse front matter và merge với schema thống nhất của nhóm (`category`, `source`, `language`, `difficulty`). Metadata được dùng trong `search_with_filter()` cho Query 5 (filter theo `source=nist-framework`).
@@ -178,7 +191,36 @@ Kết quả chạy `ChunkingStrategyComparator` trên các tài liệu:
 
 ## 7. What I Learned (5 điểm — Demo)
 
-> *Phần này hoàn thành sau khi demo và thảo luận nhóm.*
+### Failure Case #1: Mock Embedder — Semantic Blindness
+
+**Query nào retrieval thất bại?**
+> Tất cả 5 queries đều thất bại khi dùng mock embedder. Top-1 chunk không chứa gold answer cho bất kỳ query nào.
+
+**Tại sao?**
+> Mock embedder (`_mock_embed`) dùng Python `hash()` để tạo vector 128 chiều từ text. `hash()` là deterministic nhưng không capture ngữ nghĩa — mỗi ký tự khác nhau tạo ra vector khác nhau hoàn toàn. Hai câu cùng nghĩa nhưng khác ngôn ngữ ("AI đang thay đổi thế giới" vs "Artificial intelligence is transforming industries") có dot product gần 0. Thêm vào đó, NIST document chiếm 206K chars (~70% tổng corpus) nên dot product ngẫu nhiên thiên về các chunk NIST nhiều hơn.
+
+**Đề xuất cải thiện:**
+> - Cài `sentence-transformers` và dùng `LocalEmbedder` với `all-MiniLM-L6-v2` (384 chiều) — miễn phí, chạy local
+> - Hoặc dùng `OpenAIEmbedder` với `text-embedding-3-small` nếu có API key
+> - Kết quả sẽ khác biệt đáng kể: các cặp cùng nghĩa sẽ có similarity > 0.8, retrieval precision tăng rõ rệt
+
+### Failure Case #2: NIST Document Size Imbalance
+
+**Vấn đề:**
+> NIST document quá lớn (275 chunks) so với các tài liệu khác (3-94 chunks). Khi search không filter, các chunk NIST chiếm ưu thế trong top-k do xác suất cao hơn.
+
+**Đề xuất cải thiện:**
+> - Dùng `search_with_filter` để giới hạn phạm vi tìm kiếm khi biết trước document cần tìm (như Query 5)
+> - Cân nhắc giới hạn số chunk tối đa mỗi document khi add vào store
+> - Hoặc tăng chunk_size cho document lớn để giảm số chunk
+
+### Bài học rút ra
+
+1. **Embedding quality là yếu tố quyết định**: Code đúng nhưng embedder sai thì retrieval vẫn vô nghĩa
+2. **Chunk size phải cân bằng**: Quá nhỏ → mất ngữ cảnh, quá lớn → nhiễu. RecursiveChunker(1000) là lựa chọn tốt cho domain này
+3. **Metadata filtering cực kỳ quan trọng**: Query 5 chứng minh filter theo `source` giúp thu hẹp không gian tìm kiếm chính xác
+4. **Document size imbalance**: Cần chiến lược xử lý khi một document quá lớn so với phần còn lại
+5. **YAML front matter là cách tổ chức metadata hiệu quả**: Dễ đọc, dễ parse, tích hợp tốt với markdown
 
 
 ---
