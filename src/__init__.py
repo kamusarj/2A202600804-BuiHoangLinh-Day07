@@ -10,6 +10,7 @@ from .embeddings import (
     EMBEDDING_PROVIDER_ENV,
     LOCAL_EMBEDDING_MODEL,
     OPENAI_EMBEDDING_MODEL,
+    OPENROUTER_EMBEDDING_MODEL,
     LocalEmbedder,
     MockEmbedder,
     OpenAIEmbedder,
@@ -33,5 +34,6 @@ __all__ = [
     "_mock_embed",
     "LOCAL_EMBEDDING_MODEL",
     "OPENAI_EMBEDDING_MODEL",
+    "OPENROUTER_EMBEDDING_MODEL",
     "EMBEDDING_PROVIDER_ENV",
 ]
