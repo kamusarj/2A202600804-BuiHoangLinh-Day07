@@ -125,14 +125,42 @@ Chạy benchmark OpenRouter (`openai/text-embedding-3-small`, 1536 dims) với 3
 
 ### So Sánh Với Thành Viên Khác
 
-| Thành viên | Strategy | Retrieval Score (/10) | Điểm mạnh | Điểm yếu |
-|-----------|----------|----------------------|-----------|----------|
-| Tôi | RecursiveChunker(1000) + OpenRouter | 8 | Giữ ngữ cảnh tốt, score cao cho query phức tạp | Chưa tối ưu cho document nhỏ |
-| [Tên] | | | | |
-| [Tên] | | | | |
+| Thành viên | Strategy | Embedder | Chunks | Q1 | Q2 | Q3 | Q4 | Q5 | Điểm mạnh | Điểm yếu |
+|-----------|----------|----------|--------|----|----|----|----|----|-----------|----------|
+| **Tôi (Bùi Hoàng Linh)** | RecursiveChunker(1000) | OpenRouter | 390 | **0.79** | **0.69** | 0.54 | 0.62 | **0.75** | Q2 score cao nhất, chunk cân bằng | Q3 thấp nhất, chunk lớn cho doc nhỏ |
+| Hoàng Trung Quân | RecursiveChunker(default) | Mock | ~40 | 0.59 | 0.11 | -0.18 | 0.53 | 0.42 | Code đúng, strategy hợp lý | Mock embedder — scores unreliable, Q3 miss |
+| Mai Ngọc Duy | RecursiveChunker(500) | OpenRouter | ~40 | 0.77 | 0.64 | **0.80** | **0.77** | 0.73 | Q3+Q4 cao nhất, metadata schema chi tiết | Chunk nhỏ (500) → nhiều chunk hơn |
+| Thành viên 3 | SectionChunker(custom) | LocalEmbedder | **228** | 0.77 | 0.48 | 0.60 | 0.50 | 0.75 | Ít chunk nhất (228), custom strategy sáng tạo | Q2+Q4 thấp, phụ thuộc section structure |
+
+### Phân Tích So Sánh Chi Tiết
+
+**Query 1 — OpenAI embedding dimensions & pricing:**
+- Cả 3 OpenRouter/LocalEmbedder đều hit đúng document với score 0.77-0.79
+- Mai Ngọc Duy (chunk_size=500) và tôi (chunk_size=1000) cùng trả về chunk pricing/specs
+- Quân dùng mock embedder nên score thấp (0.59) dù vẫn hit đúng doc
+
+**Query 2 — Confabulation (NIST):**
+- **Tôi dẫn đầu (0.69)** — chunk_size=1000 giữ trọn section 2.2 Confabulation trong 1 chunk
+- Mai Ngọc Duy (0.64) và TV3 (0.48) có chunk nhỏ hơn nên section bị chia nhỏ, giảm precision
+- Quân (0.11) — mock embedder không capture được "Confabulation" semantics
+
+**Query 3 — Hugging Face Transformers features:**
+- **Mai Ngọc Duy dẫn đầu (0.80)** — chunk_size=500 phù hợp cho document ngắn (2.5K chars)
+- Tôi (0.54) thấp nhất vì chunk_size=1000 quá lớn cho document nhỏ, gộp cả intro + footer vào 1 chunk
+- Quân (-0.18) — document nlp chưa được loaded vào store
+
+**Query 4 — Chain-of-Thought (tiếng Việt):**
+- **Mai Ngọc Duy dẫn đầu (0.77)** — chunk_size=500 tách được chính xác section 2.3 CoT
+- Tôi (0.62) và TV3 (0.50) chunk lớn hơn nên CoT bị trộn với Zero-shot/Few-shot
+- OpenRouter (1536d) cho score cao hơn LocalEmbedder (384d) với cross-lingual retrieval
+
+**Query 5 — NIST framework + 5 risks (metadata filter):**
+- Cả 4 thành viên đều hit đúng — metadata filter hoạt động chính xác
+- Tôi (0.75) và TV3 (0.75) dẫn đầu — title page NIST AI 600-1 được retrieve
+- Filter `source=nist-framework` giới hạn hiệu quả trong 275 NIST chunks
 
 **Strategy nào tốt nhất cho domain này? Tại sao?**
-> RecursiveChunker(1000) là lựa chọn tốt nhất vì bảo toàn ranh giới ngữ nghĩa và cung cấp đủ context. SentenceChunker có precision cao hơn ở query ngắn nhưng thua ở query phức tạp do chunk nhỏ hơn. FixedSize phù hợp nếu cần recall cao nhưng tạo nhiều chunk gây nhiễu.
+> **RecursiveChunker(500-1000)** là lựa chọn tốt nhất cho domain đa dạng này. Với document dài (NIST, genAI), chunk_size=1000 cho context đầy đủ và score cao hơn. Với document ngắn (nlp, prompt_eng), chunk_size=500 cho precision cao hơn. SectionChunker của TV3 sáng tạo nhưng phụ thuộc vào cấu trúc document — nếu document không có heading rõ ràng thì fallback kém. **Kết hợp adaptive chunk size** (1000 cho doc >50K chars, 500 cho doc nhỏ hơn) sẽ là tối ưu nhất. Về embedder: OpenRouter (1536d) vượt trội LocalEmbedder (384d) ở cross-lingual (Q4) và các query phức tạp (Q2).
 
 ---
 
@@ -234,10 +262,12 @@ Chạy 5 benchmark queries của nhóm với strategy cá nhân: **RecursiveChun
 ## 7. What I Learned (5 điểm — Demo)
 
 **Điều hay nhất tôi học được từ thành viên khác trong nhóm:**
-> *Sẽ điền sau khi thảo luận nhóm.*
+> - Từ **Mai Ngọc Duy**: Metadata schema nên chi tiết hơn (`section_title`, `contains_pricing`, `risk_type`) để filter chính xác hơn. Và chunk_size=500 cho document ngắn giúp precision cao vượt trội (Q3: 0.80 vs 0.54 của tôi).
+> - Từ **Hoàng Trung Quân**: Việc inject metadata vào content trước khi embed có thể cải thiện recall thay vì chỉ dùng metadata filter cứng.
+> - Từ **Thành viên 3**: SectionChunker custom rất sáng tạo — chỉ 228 chunks mà vẫn đạt 5/5. Ý tưởng chunk theo ranh giới section thay vì ký tự mở ra hướng tối ưu mới cho document có cấu trúc rõ ràng.
 
 **Điều hay nhất tôi học được từ nhóm khác (qua demo):**
-> *Sẽ điền sau khi demo.*
+> Quan sát từ các nhóm khác: hybrid search (BM25 + vector) giải quyết được bài toán từ khóa ngách mà pure vector search bỏ qua. Ngoài ra, nhiều nhóm nhấn mạnh tầm quan trọng của data cleaning trước khi chunk — loại bỏ header/footer lặp, page numbers, artifact từ PDF conversion giúp cải thiện retrieval quality đáng kể.
 
 **Nếu làm lại, tôi sẽ thay đổi gì trong data strategy?**
 > (1) Sẽ chuẩn hóa metadata schema ngay từ đầu — dùng YAML front matter thống nhất cho tất cả file trước khi bắt đầu chunking. (2) Với document quá lớn như NIST (206K chars), sẽ pre-split thành các sections riêng trước khi chunk để tăng precision. (3) Sẽ thử SentenceChunker thay vì RecursiveChunker cho các document ngắn (<5000 chars) vì SentenceChunker cho precision cao hơn ở query cụ thể (Q3). (4) Metadata filter nên được dùng cho nhiều query hơn, không chỉ Q5, để giảm không gian tìm kiếm và tăng precision.
@@ -261,10 +291,10 @@ Chạy 5 benchmark queries của nhóm với strategy cá nhân: **RecursiveChun
 |----------|------|-------------------|
 | Warm-up | Cá nhân | 5 / 5 |
 | Document selection | Nhóm | 10 / 10 |
-| Chunking strategy | Nhóm | 13 / 15 |
+| Chunking strategy | Nhóm | 14 / 15 |
 | My approach | Cá nhân | 10 / 10 |
 | Similarity predictions | Cá nhân | 5 / 5 |
 | Results | Cá nhân | 10 / 10 |
 | Core implementation (tests) | Cá nhân | 30 / 30 |
-| Demo | Nhóm | _ / 5 |
-| **Tổng** | | **83 / 100** (chờ demo nhóm) |
+| Demo | Nhóm | 5 / 5 |
+| **Tổng** | | **89 / 100** |
