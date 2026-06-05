@@ -4,9 +4,11 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from .agent import KnowledgeBaseAgent
-from .chunking import RecursiveChunker
-from .embeddings import _mock_embed
+from .chunking import FixedSizeChunker, RecursiveChunker, SentenceChunker
+from .embeddings import OpenAIEmbedder
 from .models import Document
 from .store import EmbeddingStore
 
@@ -98,7 +100,7 @@ def run_benchmark():
     existing = [f for f in files if f.name in BENCHMARK_SCHEMA]
 
     print("=" * 70)
-    print("BENCHMARK: Retrieve Strategy — RecursiveChunker (chunk_size=1000)")
+    print("BENCHMARK: 3 Chunking Strategies vs LocalEmbedder (all-MiniLM-L6-v2)")
     print("=" * 70)
     print(f"\nLoading {len(existing)} documents:")
 
@@ -109,24 +111,15 @@ def run_benchmark():
             docs.append(doc)
             print(f"  [{doc.id}] {len(doc.content)} chars — {doc.metadata}")
 
-    chunker = RecursiveChunker(chunk_size=1000)
-    chunked_docs = []
-    for doc in docs:
-        chunks = chunker.chunk(doc.content)
-        for i, chunk_text in enumerate(chunks):
-            chunked_docs.append(
-                Document(
-                    id=f"{doc.id}_chunk{i}",
-                    content=chunk_text,
-                    metadata={**doc.metadata, "doc_id": doc.id, "chunk_index": i},
-                )
-            )
+    load_dotenv()
+    embedder = OpenAIEmbedder()
+    print(f"\nEmbedder: {embedder._backend_name}")
 
-    print(f"\nTotal chunks: {len(chunked_docs)} (chunk_size=1000, recursive)")
-
-    store = EmbeddingStore(collection_name="benchmark_store", embedding_fn=_mock_embed)
-    store.add_documents(chunked_docs)
-    print(f"Stored {store.get_collection_size()} records")
+    strategies = {
+        "FixedSize (500, overlap=100)": FixedSizeChunker(chunk_size=500, overlap=100),
+        "Sentence (max 5)": SentenceChunker(max_sentences_per_chunk=5),
+        "Recursive (1000) — My": RecursiveChunker(chunk_size=1000),
+    }
 
     queries = [
         {
@@ -136,17 +129,17 @@ def run_benchmark():
         },
         {
             "query": 'What is "Confabulation" according to NIST and how does it pose risks in healthcare?',
-            "gold": "Confabulation is GAI generating and confidently presenting erroneous/false content. In healthcare, could cause wrong diagnoses and treatments.",
+            "gold": "Confabulation: GAI generates+confidently presents false content. In healthcare: wrong diagnosis/treatment.",
             "filter": None,
         },
         {
             "query": "What are the main features of the Hugging Face Transformers library?",
-            "gold": "Ease of use (2 lines of code), Flexibility (PyTorch nn.Module), Simplicity (All in one file)",
+            "gold": "Ease of use (2 lines), Flexibility (PyTorch nn.Module), Simplicity (All in one file)",
             "filter": None,
         },
         {
             "query": "Kỹ thuật Chain-of-Thought (CoT) Prompting hoạt động như thế nào và tại sao nó giúp giảm hallucination?",
-            "gold": "CoT yêu cầu mô hình trình bày từng bước suy luận logic trước khi kết luận, giúp giảm hallucination.",
+            "gold": "CoT yêu cầu suy luận từng bước trước khi kết luận, giảm hallucination.",
             "filter": None,
         },
         {
@@ -156,37 +149,39 @@ def run_benchmark():
         },
     ]
 
-    print("\n" + "=" * 70)
-    print("QUERY RESULTS")
-    print("=" * 70)
+    for strat_name, chunker in strategies.items():
+        print(f"\n{'='*70}")
+        print(f"STRATEGY: {strat_name}")
+        print(f"{'='*70}")
 
-    for i, q in enumerate(queries, 1):
-        print(f"\n--- Query {i} ---")
-        print(f"Query: {q['query']}")
-        print(f"Gold:  {q['gold']}")
-        print(f"Filter: {q.get('filter')}")
+        chunked_docs = []
+        for doc in docs:
+            chunks = chunker.chunk(doc.content)
+            for i, chunk_text in enumerate(chunks):
+                chunked_docs.append(
+                    Document(
+                        id=f"{doc.id}_chunk{i}",
+                        content=chunk_text,
+                        metadata={**doc.metadata, "doc_id": doc.id, "chunk_index": i},
+                    )
+                )
 
-        if q.get("filter"):
-            results = store.search_with_filter(q["query"], top_k=3, metadata_filter=q["filter"])
-        else:
-            results = store.search(q["query"], top_k=3)
+        print(f"Total chunks: {len(chunked_docs)}")
 
-        for j, r in enumerate(results, 1):
-            preview = r["content"][:150].replace("\n", " ")
-            print(f"  [{j}] score={r['score']:.4f} | doc={r['metadata'].get('doc_id', '?')}")
-            print(f"      content: {preview}...")
+        store = EmbeddingStore(collection_name=f"bench_{strat_name}", embedding_fn=embedder)
+        store.add_documents(chunked_docs)
 
-    print("\n" + "=" * 70)
-    print("KNOWLEDGE BASE AGENT TEST")
-    print("=" * 70)
-    agent = KnowledgeBaseAgent(store=store, llm_fn=demo_llm)
-    for i, q in enumerate(queries, 1):
-        if i == 5:
-            continue
-        print(f"\n--- Agent Answer {i} ---")
-        print(f"Q: {q['query']}")
-        ans = agent.answer(q["query"], top_k=3)
-        print(f"A: {ans[:300]}...")
+        for i, q in enumerate(queries, 1):
+            if q.get("filter"):
+                results = store.search_with_filter(q["query"], top_k=3, metadata_filter=q["filter"])
+            else:
+                results = store.search(q["query"], top_k=3)
+
+            top_doc = results[0]["metadata"].get("doc_id", "?") if results else "none"
+            top_score = results[0]["score"] if results else 0
+            top_preview = results[0]["content"][:80].replace("\n", " ") if results else ""
+
+            print(f"  Q{i}: doc={top_doc} score={top_score:.4f} | {top_preview}...")
 
 
 if __name__ == "__main__":
