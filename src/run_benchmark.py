@@ -4,11 +4,11 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.agent import KnowledgeBaseAgent
-from src.chunking import RecursiveChunker
-from src.embeddings import _mock_embed
-from src.models import Document
-from src.store import EmbeddingStore
+from .agent import KnowledgeBaseAgent
+from .chunking import RecursiveChunker
+from .embeddings import _mock_embed
+from .models import Document
+from .store import EmbeddingStore
 
 BENCHMARK_SCHEMA = {
     "embedding_models_comparison.md": {
@@ -130,18 +130,18 @@ def run_benchmark():
 
     queries = [
         {
-            "query": "OpenAI text-embedding-3-large có bao nhiêu chiều (dimensions) và giá bao nhiêu mỗi 1K tokens?",
+            "query": "What are the dimensions and pricing of OpenAI text-embedding-3-large per 1K tokens?",
             "gold": "3,072 dimensions, $0.00013 per 1K tokens",
             "filter": None,
         },
         {
-            "query": 'Theo NIST, "Confabulation" là gì và nó gây rủi ro như thế nào trong lĩnh vực y tế?',
-            "gold": "Confabulation là GAI tạo ra nội dung sai lỗi nhưng trình bày tự tin. Trong y tế có thể khiến chẩn đoán sai, điều trị sai.",
+            "query": 'What is "Confabulation" according to NIST and how does it pose risks in healthcare?',
+            "gold": "Confabulation is GAI generating and confidently presenting erroneous/false content. In healthcare, could cause wrong diagnoses and treatments.",
             "filter": None,
         },
         {
-            "query": "Thư viện Hugging Face Transformers có những tính năng chính nào?",
-            "gold": "Ease of use (2 dòng code), Flexibility (PyTorch nn.Module), Simplicity (All in one file)",
+            "query": "What are the main features of the Hugging Face Transformers library?",
+            "gold": "Ease of use (2 lines of code), Flexibility (PyTorch nn.Module), Simplicity (All in one file)",
             "filter": None,
         },
         {
@@ -150,8 +150,8 @@ def run_benchmark():
             "filter": None,
         },
         {
-            "query": "Tìm các framework về AI risk management được phát triển bởi tổ chức chính phủ Mỹ. Liệt kê 5 rủi ro chính của Generative AI theo NIST.",
-            "gold": "NIST AI 600-1, 5 rủi ro: CBRN, Confabulation, Dangerous Content, Data Privacy, Environmental",
+            "query": "Find the AI risk management framework developed by a US government organization. List 5 main risks of Generative AI according to NIST.",
+            "gold": "NIST AI 600-1, 5 risks: CBRN, Confabulation, Dangerous Content, Data Privacy, Environmental",
             "filter": {"source": "nist-framework"},
         },
     ]

@@ -93,11 +93,11 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 
 | # | Query | Gold Answer |
 |---|-------|-------------|
-| 1 | OpenAI text-embedding-3-large có bao nhiêu chiều (dimensions) và giá bao nhiêu mỗi 1K tokens? | 3,072 dimensions, $0.00013 per 1K tokens |
-| 2 | Theo NIST, "Confabulation" là gì và nó gây rủi ro như thế nào trong lĩnh vực y tế? | Confabulation là GAI tạo nội dung sai lỗi nhưng trình bày tự tin. Trong y tế gây chẩn đoán sai, điều trị sai |
-| 3 | Thư viện Hugging Face Transformers có những tính năng chính nào? | Ease of use (2 dòng code), Flexibility (PyTorch nn.Module), Simplicity (All in one file) |
-| 4 | Kỹ thuật Chain-of-Thought (CoT) Prompting hoạt động như thế nào và tại sao nó giúp giảm hallucination? | CoT yêu cầu mô hình trình bày từng bước suy luận logic trước khi kết luận, giảm hallucination đáng kể |
-| 5 | Tìm các framework về AI risk management được phát triển bởi tổ chức chính phủ Mỹ. Liệt kê 5 rủi ro chính của Generative AI theo NIST. | NIST AI 600-1. 5 rủi ro: CBRN, Confabulation, Dangerous Content, Data Privacy, Environmental |
+| 1 | What are the dimensions and pricing of OpenAI text-embedding-3-large per 1K tokens? | 3,072 dimensions, $0.00013 per 1K tokens |
+| 2 | What is "Confabulation" according to NIST and how does it pose risks in healthcare? | Confabulation = GAI confidently presents erroneous/false content. In healthcare, could cause wrong diagnoses and treatments |
+| 3 | What are the main features of the Hugging Face Transformers library? | Ease of use (2 lines of code), Flexibility (PyTorch nn.Module), Simplicity (All in one file) |
+| 4 | Kỹ thuật Chain-of-Thought (CoT) Prompting hoạt động như thế nào và tại sao nó giúp giảm hallucination? | CoT yêu cầu mô hình trình bày từng bước suy luận logic trước khi kết luận, giảm hallucination |
+| 5 | Find the AI risk management framework developed by a US government organization. List 5 main risks of Generative AI according to NIST. | NIST AI 600-1. 5 risks: CBRN, Confabulation, Dangerous Content, Data Privacy, Environmental (cần filter source=nist-framework) |
 
 ### Kết Quả Của Tôi
 
@@ -106,18 +106,18 @@ Giải thích cách tiếp cận của bạn khi implement các phần chính tr
 
 | # | Query | Top-1 Retrieved Chunk (tóm tắt) | Score | Relevant? | Agent Answer (tóm tắt) |
 |---|-------|--------------------------------|-------|-----------|------------------------|
-| 1 | OpenAI embedding dimensions & giá | NIST document chunk về governance principles | 0.365 | No — NIST document dominates due to size | [LLM] trả về context từ NIST chunk, không chứa thông tin về OpenAI embedding |
-| 2 | NIST Confabulation & y tế | NIST chunk về explainable AI techniques | 0.363 | No — chunk retrieved không phải section Confabulation | [LLM] trả về context về XAI techniques, không phải Confabulation |
-| 3 | Hugging Face Transformers features | NIST chunk về AI system tasks (MAP 2.1) | 0.322 | No — NIST document vẫn chiếm ưu thế | [LLM] trả về context từ NIST, không phải Hugging Face |
-| 4 | Chain-of-Thought prompting | NIST chunk về Dangerous/Violent/Hateful Content | 0.448 | No — không chứa thông tin về CoT | [LLM] trả về context về AI safety assessment |
-| 5 | AI risk framework của Mỹ + 5 rủi ro | NIST chunk về GAI model behavior visualization | 0.327 | Partial — chunk #2 (score 0.322) chứa "CBRN Information or Capabilities" | N/A (query 5 dùng metadata filter) |
+| 1 | OpenAI embedding dimensions & pricing | NIST chunk về AI Actor Tasks (MANAGE 2.2) | 0.365 | No — NIST dominates | [LLM] từ NIST chunk, không chứa OpenAI info |
+| 2 | NIST Confabulation & healthcare | NIST chunk về Disclaimer (chunk 4) | 0.326 | **PARTIAL** — Top-2 (score 0.310) chứa đúng định nghĩa Confabulation! | [LLM] từ Disclaimer chunk, sai |
+| 3 | Hugging Face Transformers features | NIST chunk về MAP 1.1 (intended purposes) | 0.456 | No — NIST vẫn chiếm ưu thế | [LLM] từ NIST chunk, không phải HF |
+| 4 | Chain-of-Thought prompting | NIST chunk về Dangerous Content | 0.448 | No — không chứa CoT | [LLM] về AI safety assessment |
+| 5 | AI risk framework + 5 risks (filtered) | NIST chunk về Data Privacy & Human-AI | 0.333 | Partial — filter hoạt động đúng (275 NIST chunks), nhưng top chunk không phải section risks | N/A (query 5 metadata filter) |
 
-**Bao nhiêu queries trả về chunk relevant trong top-3?** 0 / 5
+**Bao nhiêu queries trả về chunk relevant trong top-3?** 1 / 5 (Query 2 có top-2 relevant chứa định nghĩa Confabulation)
 
 **Phân tích:**
-> Kết quả retrieval không chính xác do đang dùng `_mock_embed` — mock embedder sử dụng hash-based deterministic, không capture được ngữ nghĩa thực. NIST document chiếm 206K chars (~70% tổng corpus) nên mock embedding tạo ra nhiều chunks có dot product cao ngẫu nhiên với hầu hết query. Metadata filter tại query 5 hoạt động chính xác (chỉ trả về chunks từ `source=nist-framework`), chứng minh `search_with_filter()` hoạt động đúng.
+> So với lần chạy trước (query Tiếng Việt), query Tiếng Anh cho kết quả tốt hơn: Query 2 với "Confabulation" bằng tiếng Anh match được với document gốc tiếng Anh, top-2 chứa đúng chunk "Confabulation refers to a phenomenon in which GAI systems generate and confidently present erroneous or false content". Tuy nhiên, mock embedder vẫn là hạn chế chính — không capture được ngữ nghĩa thực. NIST document (275 chunks, 205K chars) vẫn chiếm ưu thế trong hầu hết kết quả. Metadata filter (Query 5) hoạt động chính xác.
 
-**Cần cải thiện:** Chạy lại benchmark với `LocalEmbedder` (all-MiniLM-L6-v2) hoặc `OpenAIEmbedder` để có kết quả semantic retrieval chính xác.
+**Cần cải thiện:** Chạy lại với `LocalEmbedder` (all-MiniLM-L6-v2) để có semantic retrieval chính xác.
 
 ---
 
