@@ -1,7 +1,7 @@
 # Báo Cáo Lab 7: Embedding & Vector Store
 
 **Họ tên:** Bùi Hoàng Linh
-**Nhóm:** [Tên nhóm]
+**Nhóm:** abc123
 **Ngày:** 05/06/2026
 
 ---
@@ -44,7 +44,7 @@
 **Domain:** Generative AI & Natural Language Processing (GAI + NLP)
 
 **Tại sao nhóm chọn domain này?**
-> Nhóm chọn đa domain (GAI risks + NLP fundamentals + Prompt Engineering) để kiểm tra khả năng retrieval cross-domain. Bộ tài liệu cover từ technical guide (embedding models comparison, prompt engineering), academic paper (genAI conceptualization), đến government framework (NIST AI 600-1). Điều này giúp benchmark đánh giá được: (1) retrieval precision khi câu trả lời nằm trong đúng document, (2) khả năng metadata filtering để tách domain, (3) chunking strategy nào xử lý tốt tài liệu đa dạng.
+> Domain AI phù hợp với lab vì các tài liệu có cấu trúc đa dạng (markdown, plain text, numbered sections), giúp test nhiều chunking strategy. Nội dung technical đòi hỏi retrieval chính xác để trả lời đúng câu hỏi benchmark.
 
 ### Data Inventory
 
@@ -131,6 +131,7 @@ Chạy benchmark OpenRouter (`openai/text-embedding-3-small`, 1536 dims) với 3
 | Mai Ngọc Duy | RecursiveChunker(500) | OpenRouter | ~40 | 0.77 | 0.64 | **0.80** | **0.77** | 0.73 | Q3+Q4 cao nhất, metadata schema chi tiết | Chunk nhỏ (500) → nhiều chunk hơn |
 | Hoàng Trung Quân | RecursiveChunker(default) | Mock | ~40 | 0.59 | 0.11 | -0.18 | 0.53 | 0.42 | Code đúng, strategy hợp lý | Mock embedder — scores unreliable, Q3 miss |
 | Nguyễn Viết Linh | SectionChunker(custom) | LocalEmbedder | **228** | 0.77 | 0.48 | 0.60 | 0.50 | 0.75 | Ít chunk nhất (228), custom strategy sáng tạo | Q2+Q4 thấp, phụ thuộc section structure |
+| Đặng Minh Chức | SentenceChunker(3) | Mock/Local | — | 0.72 | 0.50 | 0.72 | 0.69 | 0.61 | 5/5 relevant, sentence-based coherence tốt | Dùng data cũ (sample files), chưa có OpenRouter |
 
 ### Phân Tích So Sánh Chi Tiết
 
@@ -148,6 +149,7 @@ Chạy benchmark OpenRouter (`openai/text-embedding-3-small`, 1536 dims) với 3
 - **Mai Ngọc Duy dẫn đầu (0.80)** — chunk_size=500 phù hợp cho document ngắn (2.5K chars)
 - Tôi (0.54) thấp nhất vì chunk_size=1000 quá lớn cho document nhỏ, gộp cả intro + footer vào 1 chunk
 - Hoàng Trung Quân (-0.18) — document nlp chưa được loaded vào store
+- Đặng Minh Chức (0.72) — SentenceChunker hit đúng intro Transformers
 
 **Query 4 — Chain-of-Thought (tiếng Việt):**
 - **Mai Ngọc Duy dẫn đầu (0.77)** — chunk_size=500 tách được chính xác section 2.3 CoT
@@ -156,11 +158,11 @@ Chạy benchmark OpenRouter (`openai/text-embedding-3-small`, 1536 dims) với 3
 
 **Query 5 — NIST framework + 5 risks (metadata filter):**
 - Cả 4 thành viên đều hit đúng — metadata filter hoạt động chính xác
-- Tôi (0.75) và TV3 (0.75) dẫn đầu — title page NIST AI 600-1 được retrieve
+- Tôi (0.75) và Nguyễn Viết Linh (0.75) dẫn đầu — title page NIST AI 600-1 được retrieve
 - Filter `source=nist-framework` giới hạn hiệu quả trong 275 NIST chunks
 
 **Strategy nào tốt nhất cho domain này? Tại sao?**
-> **RecursiveChunker(500-1000)** là lựa chọn tốt nhất cho domain đa dạng này. Với document dài (NIST, genAI), chunk_size=1000 cho context đầy đủ và score cao hơn. Với document ngắn (nlp, prompt_eng), chunk_size=500 cho precision cao hơn. SectionChunker của TV3 sáng tạo nhưng phụ thuộc vào cấu trúc document — nếu document không có heading rõ ràng thì fallback kém. **Kết hợp adaptive chunk size** (1000 cho doc >50K chars, 500 cho doc nhỏ hơn) sẽ là tối ưu nhất. Về embedder: OpenRouter (1536d) vượt trội LocalEmbedder (384d) ở cross-lingual (Q4) và các query phức tạp (Q2).
+> **RecursiveChunker(500-1000)** là lựa chọn tốt nhất cho domain đa dạng này. Với document dài (NIST, genAI), chunk_size=1000 cho context đầy đủ và score cao hơn. Với document ngắn (nlp, prompt_eng), chunk_size=500 cho precision cao hơn. SectionChunker của Nguyễn Viết Linh sáng tạo nhưng phụ thuộc vào cấu trúc document — nếu document không có heading rõ ràng thì fallback kém. SentenceChunker của Đặng Minh Chức cho coherence tốt nhất nhưng tạo ít chunk hơn → có thể bỏ sót thông tin. **Kết hợp adaptive chunk size** (1000 cho doc >50K chars, 500 cho doc nhỏ hơn) sẽ là tối ưu nhất. Về embedder: OpenRouter (1536d) vượt trội LocalEmbedder (384d) ở cross-lingual (Q4) và các query phức tạp (Q2).
 
 ---
 
@@ -264,7 +266,8 @@ Chạy 5 benchmark queries của nhóm với strategy cá nhân: **RecursiveChun
 **Điều hay nhất tôi học được từ thành viên khác trong nhóm:**
 > - Từ **Mai Ngọc Duy**: Metadata schema nên chi tiết hơn (`section_title`, `contains_pricing`, `risk_type`) để filter chính xác hơn. Và chunk_size=500 cho document ngắn giúp precision cao vượt trội (Q3: 0.80 vs 0.54 của tôi).
 > - Từ **Hoàng Trung Quân**: Việc inject metadata vào content trước khi embed có thể cải thiện recall thay vì chỉ dùng metadata filter cứng.
-> - Từ **Nguyễn Viết Linh**: SectionChunker custom rất sáng tạo — chỉ 228 chunks mà vẫn đạt 5/5. Ý tưởng chunk theo ranh giới section thay vì ký tự mở ra hướng tối ưu mới cho document có cấu trúc rõ ràng.
+> - Từ **Đặng Minh Chức**: SentenceChunker với max_sentences=3 cho coherence tốt nhất — mỗi chunk là một nhóm câu hoàn chỉnh, không bị cắt ngang giữa ý. Phù hợp với tài liệu kỹ thuật có câu văn rõ ràng.
+- Từ **Nguyễn Viết Linh**: SectionChunker custom rất sáng tạo — chỉ 228 chunks mà vẫn đạt 5/5. Ý tưởng chunk theo ranh giới section thay vì ký tự mở ra hướng tối ưu mới cho document có cấu trúc rõ ràng.
 
 **Điều hay nhất tôi học được từ nhóm khác (qua demo):**
 > Quan sát từ các nhóm khác: hybrid search (BM25 + vector) giải quyết được bài toán từ khóa ngách mà pure vector search bỏ qua. Ngoài ra, nhiều nhóm nhấn mạnh tầm quan trọng của data cleaning trước khi chunk — loại bỏ header/footer lặp, page numbers, artifact từ PDF conversion giúp cải thiện retrieval quality đáng kể.
