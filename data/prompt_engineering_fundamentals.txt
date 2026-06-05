@@ -1,0 +1,38 @@
+---
+title: "Kỹ nghệ Gợi ý (Prompt Engineering) và Các Chiến lược Tối ưu cho LLM"
+document_type: "technical_guide"
+domain: "prompt_engineering"
+language: "vi"
+authors:
+  - "HOANG TRUNG QUAN"
+topics:
+  - "prompt engineering"
+  - "large language models"
+  - "retrieval-augmented generation"
+  - "in-context learning"
+  - "chain-of-thought"
+year: 2026
+---
+
+# Kỹ nghệ Gợi ý (Prompt Engineering) và Các Chiến lược Tối ưu cho LLM
+
+Kỹ nghệ Gợi ý (Prompt Engineering) là quá trình cấu trúc và tối ưu hóa văn bản đầu vào để hướng dẫn các Mô hình Ngôn ngữ Lớn (LLM) thực hiện các nhiệm vụ một cách chính xác và hiệu quả nhất. Thay vì chỉ là việc đặt câu hỏi thông thường, Prompt Engineering đóng vai trò như một phương thức lập trình bằng ngôn ngữ tự nhiên, giúp khai thác tối đa tư duy và tri thức ẩn của mô hình trí tuệ nhân tạo.
+
+## 1. Các thành phần cốt lõi của một Prompt
+Một cấu trúc prompt toàn diện và chuyên nghiệp thường bao gồm bốn thành phần chính sau đây:
+- Chỉ thị (Instruction): Yêu cầu hoặc nhiệm vụ cụ thể mà bạn muốn mô hình thực hiện.
+- Ngữ cảnh (Context): Thông tin nền tảng, dữ liệu bổ trợ hoặc miền kiến thức giúp mô hình định hình không gian câu trả lời.
+- Dữ liệu đầu vào (Input Data): Nội dung hoặc câu hỏi cụ thể cần mô hình xử lý và phân tích.
+- Chỉ thị đầu ra (Output Indicator): Định dạng mong muốn của kết quả trả về, ví dụ như JSON, bảng Markdown, hoặc danh sách gạch đầu dòng.
+
+## 2. Các kỹ thuật Prompt nâng cao áp dụng cho RAG
+Để nâng cao độ chính xác của hệ thống Retrieval-Augmented Generation, các kỹ sư thường áp dụng ba kỹ thuật tối ưu hóa prompt sau:
+
+### 2.1 Zero-shot Prompting
+Kỹ thuật này đưa thẳng yêu cầu cho mô hình mà không kèm theo bất kỳ ví dụ minh họa nào. Mô hình hoàn toàn dựa vào tri thức đã được học trong giai đoạn tiền huấn luyện để đưa ra phản hồi. Phương pháp này nhanh nhưng dễ bị lỗi định dạng khi xử lý tác vụ phức tạp.
+
+### 2.2 Few-shot Prompting
+Few-shot Prompting (In-context learning) cung cấp một hoặc một vài ví dụ mẫu (cặp mẫu câu hỏi và câu trả lời) ngay trong prompt văn bản. Kỹ thuật này giúp LLM hiểu sâu về quy chuẩn, giọng điệu và cấu trúc dữ liệu mong muốn trước khi bắt tay vào giải quyết bài toán thực tế.
+
+### 2.3 Chain-of-Thought (CoT) Prompting
+Kỹ thuật Chuỗi suy nghĩ (CoT) yêu cầu mô hình không được đưa ra kết quả ngay lập tức, mà phải bóc tách và trình bày từng bước suy luận logic trước khi kết luận. Bằng cách ép mô hình "suy nghĩ từng bước một", CoT giúp giảm thiểu đáng kể hiện tượng ảo tưởng (hallucination) trong các bài toán lập luận phức tạp.

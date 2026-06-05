@@ -1,3 +1,13 @@
+---
+title: "Hugging Face Transformers — Introduction"
+category: nlp
+language: en
+difficulty: intermediate
+source: huggingface-course
+date: 2023
+tags: [huggingface, transformers, nlp, pipeline, tokenizer, pytorch]
+---
+
 # Introduction[[introduction]]
 
 <CourseFloatingBanner
